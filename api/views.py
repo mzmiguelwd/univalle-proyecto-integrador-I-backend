@@ -11,6 +11,10 @@ from .serializers import (
     UserProfileSerializer,
 )
 
+from rest_framework.decorators import action
+from django.utils import timezone
+from datetime import timedelta
+
 
 @api_view(['POST'])
 def register_view(request):
@@ -62,6 +66,9 @@ def login_view(request):
         status=status.HTTP_401_UNAUTHORIZED
     )
 
+    login(request, user)  # 🔥 ESTO crea la cookie sessionid
+    return Response({"message": "Login ok"}, status=status.HTTP_200_OK)
+
 
 class TaskViewSet(viewsets.ModelViewSet):
     serializer_class = TaskSerializer
@@ -73,6 +80,21 @@ class TaskViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
+
+    #Endpoint para tareas de hoy
+    @action(detail=False, methods=["get"], url_path="today")
+    def today(self, request):
+        now = timezone.localtime()
+        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        end = start + timedelta(days=1)
+
+        qs = self.get_queryset().filter(
+            due_date__gte=start,
+            due_date__lt=end
+        )
+
+        serializer = self.get_serializer(qs, many=True)
+        return Response(serializer.data)
 
 class SubtaskViewSet(viewsets.ModelViewSet):
     serializer_class = SubtaskSerializer
