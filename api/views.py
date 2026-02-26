@@ -13,6 +13,7 @@ from .serializers import (
 
 from rest_framework.decorators import action
 from django.utils import timezone
+from datetime import timedelta
 
 
 @api_view(['POST'])
@@ -64,6 +65,9 @@ def login_view(request):
         {'error': 'Credenciales inválidas'},
         status=status.HTTP_401_UNAUTHORIZED
     )
+
+    login(request, user)  # 🔥 ESTO crea la cookie sessionid
+    return Response({"message": "Login ok"}, status=status.HTTP_200_OK)
 
 
 class TaskViewSet(viewsets.ModelViewSet):
