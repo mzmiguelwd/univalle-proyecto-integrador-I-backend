@@ -2,6 +2,7 @@ from rest_framework import viewsets, permissions, status, generics
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
+from rest_framework.authentication import TokenAuthentication
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from .models import Task, Subtask, UserProfile
@@ -71,6 +72,7 @@ def login_view(request):
 
 
 class TaskViewSet(viewsets.ModelViewSet):
+    authentication_classes = [TokenAuthentication]
     serializer_class = TaskSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -97,6 +99,7 @@ class TaskViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 class SubtaskViewSet(viewsets.ModelViewSet):
+    authentication_classes = [TokenAuthentication]
     serializer_class = SubtaskSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -110,6 +113,7 @@ class ProfileSettingsView(generics.RetrieveUpdateAPIView):
     seguro, sin permitir crear perfiles duplicados ni borrar el perfil.
     '''
     
+    authentication_classes = [TokenAuthentication]
     serializer_class = UserProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
 
