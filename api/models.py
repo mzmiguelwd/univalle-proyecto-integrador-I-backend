@@ -28,8 +28,6 @@ class Task(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    description = models.TextField(blank=True, null=True, help_text='Descripción adicional de la tarea')
-
     def __str__(self):
         return f'{self.title} - {self.course}'
 
