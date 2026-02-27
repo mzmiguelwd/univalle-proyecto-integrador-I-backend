@@ -54,3 +54,8 @@ class TaskSerializer(serializers.ModelSerializer):
             'description',
         ]
         read_only_fields = ['created_at', 'updated_at']
+    
+    def validate_title(self, value):
+        if not value.strip():
+            raise serializers.ValidationError("El título no puede estar vacío.")
+        return value
