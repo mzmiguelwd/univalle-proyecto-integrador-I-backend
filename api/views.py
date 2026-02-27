@@ -147,7 +147,6 @@ class ProfileSettingsView(generics.RetrieveUpdateAPIView):
     seguro, sin permitir crear perfiles duplicados ni borrar el perfil.
     '''
     
-    authentication_classes = [TokenAuthentication]
     serializer_class = UserProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
 
