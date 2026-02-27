@@ -8,11 +8,9 @@ router.register(r'tasks', TaskViewSet, basename='task')
 router.register(r'subtasks', SubtaskViewSet, basename='subtask')
 
 urlpatterns = [
-    # Authentication endpoints
     path('auth/login/', login_view, name='login'),
     path('auth/register/', register_view, name='register'),
     
-    # User profile endpoint
     path('profile/', ProfileSettingsView.as_view(), name='profile-settings'),
 ]
 

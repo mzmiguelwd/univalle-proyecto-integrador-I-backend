@@ -7,68 +7,57 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from .models import Task, Subtask, UserProfile
 from .serializers import (
+    LoginSerializer,
     TaskSerializer, 
     SubtaskSerializer, 
     UserProfileSerializer,
 )
-
+from drf_spectacular.utils import extend_schema
 from rest_framework.decorators import action
 from django.utils import timezone
 from datetime import timedelta
+from .serializers import RegisterSerializer
+from django.db.models import Q, F
 
 
+@extend_schema(request=RegisterSerializer)
 @api_view(['POST'])
 def register_view(request):
-    username = request.data.get('username')
-    email = request.data.get('email')
-    password = request.data.get('password')
+    serializer = RegisterSerializer(data=request.data)
 
-    if not username or not password:
-        return Response(
-            {'error': 'Username y password son obligatorios'},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-
-    if User.objects.filter(username=username).exists():
-        return Response(
-            {'error': 'El usuario ya existe'},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-
-    user = User.objects.create_user(username=username, email=email, password=password)
-    UserProfile.objects.create(user=user)
-
-    token = Token.objects.create(user=user)
-
-    return Response({
-        'token': token.key,
-        'username': user.username,
-        'message': 'Usuario registrado exitosamente'
-    }, status=status.HTTP_201_CREATED)
+    # If the data is invalid, DRF automatically returns the errors in Spanish
+    # that we configured, with a status of 400 Bad Request
+    if serializer.is_valid():
+        user = serializer.save()
+        token, created = Token.objects.get_or_create(user=user)
+        
+        return Response({
+            'message': 'Usuario registrado exitosamente',
+            'username': user.username,
+            'token': token.key
+        }, status=status.HTTP_201_CREATED)
+        
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+@extend_schema(request=LoginSerializer)
 @api_view(['POST'])
 def login_view(request):
-    username = request.data.get('username')
-    password = request.data.get('password')
+    serializer = LoginSerializer(data=request.data)
 
-    user = authenticate(username=username, password=password)
-
-    if user is not None:
+    if serializer.is_valid():
+        # Extract the user that the serializer has already validated
+        user = serializer.validated_data['user']
         token, created = Token.objects.get_or_create(user=user)
+
         return Response({
             'token': token.key,
             'username': user.username,
             'user_id': user.id,
-        })
+        }, status=status.HTTP_200_OK)
 
-    return Response(
-        {'error': 'Credenciales inválidas'},
-        status=status.HTTP_401_UNAUTHORIZED
-    )
-
-    login(request, user)  # 🔥 ESTO crea la cookie sessionid
-    return Response({"message": "Login ok"}, status=status.HTTP_200_OK)
+    # If the credentials fail, return a 400 Bad Request with the error message in Spanish
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class TaskViewSet(viewsets.ModelViewSet):
@@ -82,18 +71,17 @@ class TaskViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
-
-    #Endpoint para tareas de hoy
-    @action(detail=False, methods=["get"], url_path="today")
-    def today(self, request):
-        now = timezone.localtime()
-        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        end = start + timedelta(days=1)
+    # api/auth/tasks/dashboard/
+    @action(detail=False, methods=["get"], url_path="dashboard")
+    def dashboard(self, request):
+        now_date = timezone.localtime().date()
+        recent_date = now_date - timedelta(days=7)
 
         qs = self.get_queryset().filter(
-            due_date__gte=start,
-            due_date__lt=end
-        )
+            Q(is_completed=False) | 
+            Q(is_completed=True, due_date__date__gte=recent_date) |
+            Q(is_completed=True, updated_at__date__gte=recent_date) 
+        ).order_by(F('due_date').asc(nulls_last=True))
 
         serializer = self.get_serializer(qs, many=True)
         return Response(serializer.data)
