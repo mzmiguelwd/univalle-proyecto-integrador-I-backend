@@ -9,5 +9,4 @@ echo "Recolectando archivos estáticos (Swagger, Admin)..."
 python manage.py collectstatic --no-input
 
 echo "Aplicando migraciones a la base de datos..."
-python manage.py migrate api --fake
 python manage.py migrate
