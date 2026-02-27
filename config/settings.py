@@ -1,10 +1,12 @@
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+import psycopg2
+import dj_database_url
 
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(os.path.join(BASE_DIR, '.env'))
+load_dotenv()
+
 
 SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
@@ -59,18 +61,15 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("DB_NAME"),
-        "USER": os.getenv("DB_USER"),
-        "PASSWORD": os.getenv("DB_PASSWORD"),
-        "HOST": os.getenv("DB_HOST"),
-        "PORT": os.getenv("DB_PORT", "6543"),
-        'CONN_MAX_AGE': 0,
-        "OPTIONS": {
-            "options": "-c statement_timeout=30000" 
-        }
-    }
+    "default": dj_database_url.config(
+        default=os.getenv("DATABASE_URL"),
+        conn_max_age=0,
+        ssl_require=True,
+    ),
+}
+
+DATABASES["default"]["OPTIONS"] = {
+    "sslmode": "require",
 }
 
 AUTH_PASSWORD_VALIDATORS = [
