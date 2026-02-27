@@ -2,6 +2,7 @@ from rest_framework import viewsets, permissions, status, generics
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.authtoken.models import Token
+from rest_framework.authentication import TokenAuthentication
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from .models import Task, Subtask, UserProfile
@@ -10,6 +11,10 @@ from .serializers import (
     SubtaskSerializer, 
     UserProfileSerializer,
 )
+
+from rest_framework.decorators import action
+from django.utils import timezone
+from datetime import timedelta
 
 
 @api_view(['POST'])
@@ -62,8 +67,12 @@ def login_view(request):
         status=status.HTTP_401_UNAUTHORIZED
     )
 
+    login(request, user)  # 🔥 ESTO crea la cookie sessionid
+    return Response({"message": "Login ok"}, status=status.HTTP_200_OK)
+
 
 class TaskViewSet(viewsets.ModelViewSet):
+    authentication_classes = [TokenAuthentication]
     serializer_class = TaskSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -74,7 +83,23 @@ class TaskViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user)
 
 
+    #Endpoint para tareas de hoy
+    @action(detail=False, methods=["get"], url_path="today")
+    def today(self, request):
+        now = timezone.localtime()
+        start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        end = start + timedelta(days=1)
+
+        qs = self.get_queryset().filter(
+            due_date__gte=start,
+            due_date__lt=end
+        )
+
+        serializer = self.get_serializer(qs, many=True)
+        return Response(serializer.data)
+
 class SubtaskViewSet(viewsets.ModelViewSet):
+    authentication_classes = [TokenAuthentication]
     serializer_class = SubtaskSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -88,6 +113,7 @@ class ProfileSettingsView(generics.RetrieveUpdateAPIView):
     seguro, sin permitir crear perfiles duplicados ni borrar el perfil.
     '''
     
+    authentication_classes = [TokenAuthentication]
     serializer_class = UserProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
 
