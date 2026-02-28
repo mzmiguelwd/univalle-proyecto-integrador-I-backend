@@ -130,6 +130,7 @@ class TaskSerializer(serializers.ModelSerializer):
             'task_type',
             'course',
             'due_date',
+            'description',
             'is_completed',
             'subtasks',
             'created_at',
