@@ -130,9 +130,10 @@ class TaskSerializer(serializers.ModelSerializer):
             'task_type',
             'course',
             'due_date',
+            'description',
             'is_completed',
             'subtasks',
             'created_at',
             'updated_at',
         ]
-        read_only_fields = ['created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at', 'user']
