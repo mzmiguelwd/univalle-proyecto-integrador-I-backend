@@ -24,6 +24,7 @@ class Task(models.Model):
     task_type = models.CharField(max_length=20, choices=TaskType.choices, default=TaskType.OTRO)
     course = models.CharField(max_length=100)
     due_date = models.DateTimeField(null=True, blank=True, help_text='Fecha y hora límite de entrega')
+    description = models.TextField(blank=True, null=True, help_text='Detalles adicionales sobre la tarea')
     
     is_completed = models.BooleanField(default=False, help_text='Indica si la tarea ya fue finalizada')
     created_at = models.DateTimeField(auto_now_add=True)
