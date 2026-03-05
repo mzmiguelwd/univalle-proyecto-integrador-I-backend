@@ -137,3 +137,11 @@ class TaskSerializer(serializers.ModelSerializer):
             'updated_at',
         ]
         read_only_fields = ['created_at', 'updated_at', 'user']
+
+class EmptySerializer(serializers.Serializer):
+    """
+    Serializador vacío utilizado para documentar endpoints 
+    que no esperan ningún dato en el cuerpo (body) de la petición, 
+    como el cierre de sesión.
+    """
+    pass
