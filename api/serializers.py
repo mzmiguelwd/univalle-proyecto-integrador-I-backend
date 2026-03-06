@@ -105,7 +105,6 @@ class SubtaskSerializer(serializers.ModelSerializer):
         model = Subtask
         fields = [
             'id',
-            'task',
             'name',
             'target_date',
             'original_target_date',
@@ -119,7 +118,7 @@ class SubtaskSerializer(serializers.ModelSerializer):
 
 
 class TaskSerializer(serializers.ModelSerializer):
-    subtasks = SubtaskSerializer(many=True, read_only=True)
+    subtasks = SubtaskSerializer(many=True, required=False)
 
     class Meta:
         model = Task
@@ -137,3 +136,26 @@ class TaskSerializer(serializers.ModelSerializer):
             'updated_at',
         ]
         read_only_fields = ['created_at', 'updated_at', 'user']
+
+    def create(self, validated_data):
+        request = self.context.get('request')
+        user = request.user
+
+        validated_data.pop('user', None)
+        
+        subtasks_data = validated_data.pop('subtasks', [])
+
+        task = Task.objects.create(user=user, **validated_data)
+
+        for subtask_data in subtasks_data:
+            Subtask.objects.create(task=task, **subtask_data)
+
+        return task
+      
+class EmptySerializer(serializers.Serializer):
+    """
+    Serializador vacío utilizado para documentar endpoints 
+    que no esperan ningún dato en el cuerpo (body) de la petición, 
+    como el cierre de sesión.
+    """
+    pass

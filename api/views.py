@@ -15,7 +15,8 @@ from .serializers import (
     TaskSerializer, 
     SubtaskSerializer, 
     UserProfileSerializer,
-    RegisterSerializer
+    RegisterSerializer,
+    EmptySerializer
 )
 
 
@@ -92,6 +93,7 @@ def login_view(request):
 
 class LogoutView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    serializer_class = EmptySerializer
     
     def post(self, request):
         try:
@@ -137,6 +139,22 @@ class SubtaskViewSet(viewsets.ModelViewSet):
     serializer_class = SubtaskSerializer
     permission_classes = [permissions.IsAuthenticated]
 
+    def perform_create(self, serializer):
+        # aceptar task desde el body o desde kwargs (rutas anidadas)
+        task_id = self.request.data.get('task') or self.kwargs.get('task_pk')
+        if not task_id:
+            raise serializers.ValidationError({'task': ['Este campo es obligatorio cuando se crea una subtarea por separado.']})
+
+        try:
+            task = Task.objects.get(pk=task_id)
+        except Task.DoesNotExist:
+            raise serializers.ValidationError({'task': ['Tarea no encontrada.']})
+
+        if task.user != self.request.user:
+            raise permissions.PermissionDenied('No puedes crear subtareas para esa tarea.')
+
+        serializer.save(task=task)
+        
     def get_queryset(self):
         return Subtask.objects.filter(task__user=self.request.user)
 
