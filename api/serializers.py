@@ -129,6 +129,7 @@ class TaskSerializer(serializers.ModelSerializer):
             'task_type',
             'course',
             'due_date',
+            'description',
             'is_completed',
             'subtasks',
             'created_at',
@@ -150,3 +151,11 @@ class TaskSerializer(serializers.ModelSerializer):
             Subtask.objects.create(task=task, **subtask_data)
 
         return task
+      
+class EmptySerializer(serializers.Serializer):
+    """
+    Serializador vacío utilizado para documentar endpoints 
+    que no esperan ningún dato en el cuerpo (body) de la petición, 
+    como el cierre de sesión.
+    """
+    pass

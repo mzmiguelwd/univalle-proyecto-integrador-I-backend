@@ -15,7 +15,8 @@ from .serializers import (
     TaskSerializer, 
     SubtaskSerializer, 
     UserProfileSerializer,
-    RegisterSerializer
+    RegisterSerializer,
+    EmptySerializer
 )
 
 
@@ -92,6 +93,7 @@ def login_view(request):
 
 class LogoutView(APIView):
     permission_classes = [permissions.IsAuthenticated]
+    serializer_class = EmptySerializer
     
     def post(self, request):
         try:
