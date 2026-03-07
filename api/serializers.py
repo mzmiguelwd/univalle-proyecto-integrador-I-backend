@@ -91,7 +91,7 @@ class LoginSerializer(serializers.Serializer):
                 if not user.is_active:
                     raise serializers.ValidationError('Esta cuenta ha sido desactivada.')
             else:
-                raise serializers.ValidationError('Credenciales inválidas. Verifica tu usuario y contraseña.')
+                raise serializers.ValidationError('No pudimos iniciar sesión. Verifica tu usuario y contraseña.')
         else:
             raise serializers.ValidationError('Debe incluir nombre de usuario y contraseña.')
         
