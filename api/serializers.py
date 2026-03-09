@@ -6,6 +6,7 @@ from .models import UserProfile, Task, Subtask
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
+    daily_limit = serializers.FloatField(min_value=1, max_value=23)
     class Meta:
         model = UserProfile
         fields = ['daily_limit']
@@ -114,11 +115,23 @@ class SubtaskSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at',
         ]
-        read_only_fields = ['created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def validate(self, data):
+        # Para el caso de update, ya tenemos la instancia con su respectiva tarea
+        # Para create (separado), validamos en el views.py o si pasamos el task
+        target_date = data.get('target_date')
+        if target_date and self.instance and self.instance.task and self.instance.task.due_date:
+            if target_date > self.instance.task.due_date.date():
+                raise serializers.ValidationError({
+                    'target_date': 'La fecha de la subtarea no puede ser posterior a la fecha límite de la tarea.'
+                })
+        return data
 
 
 class TaskSerializer(serializers.ModelSerializer):
     subtasks = SubtaskSerializer(many=True, required=False)
+    total_estimated_hours = serializers.FloatField(read_only=True)
 
     class Meta:
         model = Task
@@ -132,10 +145,25 @@ class TaskSerializer(serializers.ModelSerializer):
             'description',
             'is_completed',
             'subtasks',
+            'total_estimated_hours',
             'created_at',
             'updated_at',
         ]
-        read_only_fields = ['created_at', 'updated_at', 'user']
+        read_only_fields = ['created_at', 'updated_at', 'user', 'total_estimated_hours']
+
+    def validate(self, data):
+        due_date = data.get('due_date')
+        subtasks = data.get('subtasks', [])
+        
+        # Validación: las subtareas anidadas no pueden exceder la fecha de la tarea
+        if due_date and subtasks:
+            for subtask_data in subtasks:
+                target_date = subtask_data.get('target_date')
+                if target_date and target_date > due_date.date():
+                    raise serializers.ValidationError({
+                        "subtasks": "Una subtarea no puede tener una fecha posterior a la fecha límite de la tarea principal."
+                    })
+        return data
 
     def create(self, validated_data):
         request = self.context.get('request')
@@ -148,6 +176,7 @@ class TaskSerializer(serializers.ModelSerializer):
         task = Task.objects.create(user=user, **validated_data)
 
         for subtask_data in subtasks_data:
+            subtask_data.pop('id', None)
             Subtask.objects.create(task=task, **subtask_data)
 
         return task
@@ -159,3 +188,5 @@ class EmptySerializer(serializers.Serializer):
     como el cierre de sesión.
     """
     pass
+
+

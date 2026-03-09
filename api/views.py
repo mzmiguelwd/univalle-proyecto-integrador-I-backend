@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import timedelta, datetime
 from django.utils import timezone
 from django.db.models import Q, F
 from drf_spectacular.types import OpenApiTypes
@@ -153,10 +153,37 @@ class SubtaskViewSet(viewsets.ModelViewSet):
         if task.user != self.request.user:
             raise permissions.PermissionDenied('No puedes crear subtareas para esa tarea.')
 
+        # Validamos que la fecha objetivo no sea mayor que la de la tarea
+        target_date = serializer.validated_data.get('target_date')
+        if task.due_date and target_date:
+            if target_date > task.due_date.date():
+                raise serializers.ValidationError({'target_date': ['La fecha de la subtarea no puede ser posterior a la fecha límite de la tarea.']})
+
         serializer.save(task=task)
         
     def get_queryset(self):
         return Subtask.objects.filter(task__user=self.request.user)
+
+    @action(detail=False, methods=['get'], url_path='workload')
+    def workload(self, request):
+        date_str = request.query_params.get('date')
+        if not date_str:
+            return Response({'error': 'Parámetro date es requerido (YYYY-MM-DD)'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            target_date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        except ValueError:
+            return Response({'error': 'Formato de fecha inválido. Use YYYY-MM-DD.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        subtasks = self.get_queryset().filter(target_date=target_date)
+        total_hours = sum(st.estimated_hours for st in subtasks if st.estimated_hours)
+        daily_limit = request.user.profile.daily_limit
+
+        return Response({
+            'date': date_str,
+            'total_hours': total_hours,
+            'daily_limit': daily_limit
+        })
 
 
 class ProfileSettingsView(generics.RetrieveUpdateAPIView):
@@ -170,3 +197,5 @@ class ProfileSettingsView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         return self.request.user.profile
+
+
