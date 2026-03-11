@@ -1,6 +1,8 @@
 from datetime import timedelta, datetime
 from django.utils import timezone
 from django.db.models import Q, F
+from django.db.models import Count, Sum
+from django.db.models.functions import TruncMonth
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema, inline_serializer
 from rest_framework import serializers, viewsets, permissions, status, generics
@@ -198,4 +200,99 @@ class ProfileSettingsView(generics.RetrieveUpdateAPIView):
     def get_object(self):
         return self.request.user.profile
 
+@api_view(["GET"])
+def progress_report(request):
+
+    user = request.user
+
+    # ---------- TAREAS POR MES ----------
+    monthly = (
+        Task.objects
+        .filter(user=user)
+        .annotate(month=TruncMonth("created_at"))
+        .values("month")
+        .annotate(tasks=Count("id"))
+        .order_by("month")
+    )
+
+    monthly_tasks = [
+        {
+            "month": item["month"].strftime("%b"),
+            "tasks": item["tasks"]
+        }
+        for item in monthly
+    ]
+
+    # ---------- GENERAR SEMANA COMPLETA ----------
+    today = datetime.today().date()
+    start_week = today - timedelta(days=today.weekday())
+
+    week_days = []
+    day_names = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
+
+    for i in range(7):
+        day = start_week + timedelta(days=i)
+        week_days.append({
+            "date": day,
+            "name": day_names[i],
+            "tasks": 0,
+            "hours": 0
+        })
+
+    # ---------- CONSULTAR SUBTAREAS DE LA SEMANA ----------
+    subtasks = Subtask.objects.filter(
+        task__user=user,
+        target_date__gte=start_week,
+        target_date__lt=start_week + timedelta(days=7)
+    )
+
+    # ---------- LLENAR LOS DATOS ----------
+    for subtask in subtasks:
+        for day in week_days:
+            if subtask.target_date == day["date"]:
+                day["tasks"] += 1
+                day["hours"] += subtask.estimated_hours
+
+    weekly_tasks = [
+        {"day": d["name"], "tasks": d["tasks"]}
+        for d in week_days
+    ]
+
+    hours_worked = [
+        {"day": d["name"], "hours": d["hours"]}
+        for d in week_days
+    ]
+
+    # ---------- KPIs ----------
+    tasks_month = Task.objects.filter(user=user).count()
+
+    tasks_week = subtasks.count()
+
+    total_subtasks = Subtask.objects.filter(task__user=user).count()
+
+    completed_subtasks = Subtask.objects.filter(
+        task__user=user,
+        status="done"
+    ).count()
+
+    completion = 0
+    if total_subtasks > 0:
+        completion = round((completed_subtasks / total_subtasks) * 100)
+
+    total_hours = Subtask.objects.filter(
+        task__user=user,
+        status="done"
+    ).aggregate(total=Sum("estimated_hours"))["total"] or 0
+
+    return Response({
+        "monthly_tasks": monthly_tasks,
+        "weekly_tasks": weekly_tasks,
+        "hours_worked": hours_worked,
+        "kpis": {
+            "tasks_month": tasks_month,
+            "tasks_week": tasks_week,
+            "hours": total_hours,
+            "completion": completion
+        }
+    })
 
