@@ -30,6 +30,10 @@ class Task(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    @property
+    def total_estimated_hours(self):
+        return sum(subtask.estimated_hours for subtask in self.subtasks.all())
+
     def __str__(self):
         return f'{self.title} - {self.course}'
 
@@ -50,7 +54,19 @@ class Subtask(models.Model):
     target_date = models.DateField(help_text='Fecha en la que el usuario planea hacer esta subtarea')
     original_target_date = models.DateField(null=True, blank=True, help_text='Guarda la fecha original si se reprograma')
     
-    estimated_hours = models.FloatField(help_text='Duración estimada para sumar a la carga del día')
+    ESTIMATED_HOURS_CHOICES = [
+        (0.25, '15 min'),
+        (0.5, '30 min'),
+        (0.75, '45 min'),
+        (1.0, '1 hora'),
+        (1.5, '1.5 horas'),
+        (2.0, '2 horas'),
+        (3.0, '3 horas'),
+    ]
+    estimated_hours = models.FloatField(
+        choices=ESTIMATED_HOURS_CHOICES,
+        help_text='Duración estimada para sumar a la carga del día'
+    )
     status = models.CharField(
         max_length=20,
         choices=Status.choices,
