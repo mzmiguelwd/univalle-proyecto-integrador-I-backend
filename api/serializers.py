@@ -128,6 +128,16 @@ class SubtaskSerializer(serializers.ModelSerializer):
                 })
         return data
 
+    def update(self, instance, validated_data):
+        new_target_date = validated_data.get('target_date', instance.target_date)
+        if new_target_date > instance.target_date:
+            # Si se pospone, guardamos la fecha original si nunca se había guardado
+            if not instance.original_target_date:
+                validated_data['original_target_date'] = instance.target_date
+            validated_data['status'] = Subtask.Status.POSTPONED
+            
+        return super().update(instance, validated_data)
+
 
 class TaskSerializer(serializers.ModelSerializer):
     subtasks = SubtaskSerializer(many=True, required=False)
@@ -144,6 +154,7 @@ class TaskSerializer(serializers.ModelSerializer):
             'due_date',
             'description',
             'is_completed',
+            'is_postponed',
             'subtasks',
             'total_estimated_hours',
             'created_at',
@@ -164,6 +175,13 @@ class TaskSerializer(serializers.ModelSerializer):
                         "subtasks": "Una subtarea no puede tener una fecha posterior a la fecha límite de la tarea principal."
                     })
         return data
+
+    def update(self, instance, validated_data):
+        new_due_date = validated_data.get('due_date', instance.due_date)
+        if new_due_date and instance.due_date and new_due_date > instance.due_date:
+            validated_data['is_postponed'] = True
+            
+        return super().update(instance, validated_data)
 
     def create(self, validated_data):
         request = self.context.get('request')
