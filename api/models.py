@@ -27,6 +27,7 @@ class Task(models.Model):
     description = models.TextField(blank=True, null=True, help_text='Detalles adicionales sobre la tarea')
     
     is_completed = models.BooleanField(default=False, help_text='Indica si la tarea ya fue finalizada')
+    is_postponed = models.BooleanField(default=False, help_text='Indica si la fecha de la tarea fue pospuesta')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
