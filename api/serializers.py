@@ -3,6 +3,7 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from rest_framework import serializers
 from .models import UserProfile, Task, Subtask
+from datetime import date
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
@@ -118,14 +119,21 @@ class SubtaskSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'updated_at']
 
     def validate(self, data):
-        # Para el caso de update, ya tenemos la instancia con su respectiva tarea
-        # Para create (separado), validamos en el views.py o si pasamos el task
         target_date = data.get('target_date')
+
+        # No permitir fechas anteriores a la fecha actual del usuario/sistema
+        if target_date and target_date < date.today():
+            raise serializers.ValidationError({
+                'target_date': 'No puedes asignar una fecha anterior a la fecha actual.'
+            })
+
+        # Validar que la subtarea no supere la fecha límite de la tarea principal
         if target_date and self.instance and self.instance.task and self.instance.task.due_date:
             if target_date > self.instance.task.due_date.date():
                 raise serializers.ValidationError({
                     'target_date': 'La fecha de la subtarea no puede ser posterior a la fecha límite de la tarea.'
                 })
+
         return data
 
     def update(self, instance, validated_data):
